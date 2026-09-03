@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YTSign</title>
+    <link rel="stylesheet" href="viewer.css" />
+    <script type="module" src="viewer-app.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header id="dragHandle" class="topbar">
+        <div class="brand">
+          <span id="liveDot" class="dot"></span>
+          <div>
+            <strong>YTSign</strong>
+            <span id="languageLabel">Pakistan (PSL)</span>
+          </div>
+        </div>
+        <div class="window-actions" data-no-drag>
+          <div id="sizeButton" class="action-button" role="button" tabindex="0" title="Change overlay size" aria-label="Change overlay size"><span>Aa</span></div>
+          <div id="minimizeButton" class="action-button" role="button" tabindex="0" title="Minimize" aria-label="Minimize overlay"><span>—</span></div>
+          <div id="closeButton" class="action-button" role="button" tabindex="0" title="Hide" aria-label="Hide overlay"><span>×</span></div>
+        </div>
+      </header>
+
+      <section class="controls" data-no-drag>
+        <div class="language-control">
+          <span>Output</span>
+          <div id="languageSelect" class="sign-choice" role="group" aria-label="Output sign language">
+            <div id="pslButton" class="language-option active" role="button" tabindex="0" data-language="pks" aria-pressed="true" title="Pakistan Sign Language"><span>Pakistan (PSL)</span></div>
+            <div id="aslButton" class="language-option" role="button" tabindex="0" data-language="ase" aria-pressed="false" title="American Sign Language"><span>Global (ASL)</span></div>
+          </div>
+        </div>
+        <div id="startButton" class="primary" role="button" tabindex="0"><span>Start</span></div>
+      </section>
+
+      <section class="stage" aria-live="polite">
+        <div id="idle" class="idle">
+          <div class="hands">🤟</div>
+          <strong>Ready when you are</strong>
+          <span>Press Start to translate this video.</span>
+        </div>
+        <iframe id="rendererFrame" class="renderer-frame" src="pose-sandbox.html" title="Signing pose renderer"></iframe>
+        <div id="busy" class="busy" hidden><span></span> Translating pose…</div>
+        <div id="queueBadge" class="queue" hidden></div>
+      </section>
+
+      <section class="transcript">
+        <div class="meta-row">
+          <span id="status">Waiting to start</span>
+          <span id="sourceBadge">EN</span>
+        </div>
+        <p id="caption">The current video phrase will appear here.</p>
+        <p id="gloss" class="gloss"></p>
+      </section>
+
+      <footer>
+        <span>AI pose translation · may contain errors</span>
+        <a href="https://sign.mt" target="_blank" rel="noreferrer">sign.mt</a>
+      </footer>
+    </main>
+  </body>
+</html>

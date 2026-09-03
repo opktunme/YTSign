@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YTSign</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">REAL-TIME YOUTUBE ACCESSIBILITY</div>
+      <h1><span>🤟</span> YTSign</h1>
+      <p class="lede">A live sign-language overlay that automatically follows the video.</p>
+
+      <label>
+        <span>Sign language</span>
+        <select id="language">
+          <option value="pks">Pakistan (PSL)</option>
+          <option value="ase">Global (ASL)</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Overlay size</span>
+        <select id="size">
+          <option value="small">Small</option>
+          <option value="medium">Medium</option>
+          <option value="large">Large</option>
+        </select>
+      </label>
+
+      <button id="enabled" type="button">Enable on YouTube</button>
+      <div id="saved" role="status"></div>
+
+      <ol>
+        <li>Open a YouTube video.</li>
+        <li>Choose your settings and press <b>Enable on YouTube</b>.</li>
+        <li>The best available video text or speech source is selected automatically.</li>
+      </ol>
+
+      <aside>English, Urdu, and Hindi video text is sent directly for pose translation. When text is unavailable, multilingual speech recognition runs locally. The 3D signer prioritizes clear, reliable motion.</aside>
+      <footer>Prototype output may contain linguistic or motion errors. Not a replacement for a qualified interpreter.</footer>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

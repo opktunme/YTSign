@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "YTSign — Pakistan & Global",
+  "short_name": "YTSign",
+  "version": "0.5.1",
+  "description": "Real-time Pakistan (PSL) or Global (ASL) translation over YouTube transcripts or local AI audio transcription.",
+  "permissions": ["storage", "activeTab", "tabCapture", "offscreen"],
+  "host_permissions": [
+    "https://us-central1-sign-mt.cloudfunctions.net/*",
+    "https://huggingface.co/*",
+    "https://*.huggingface.co/*",
+    "https://*.hf.co/*",
+    "https://*.xethub.hf.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "YTSign",
+    "default_popup": "popup.html"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      }
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/watch*", "https://youtube.com/watch*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "viewer.html",
+        "viewer.css",
+        "viewer-app.js",
+        "pose-sandbox.html",
+        "pose-sandbox.js",
+        "avatar-renderer.js",
+        "vendor/pose-viewer/*"
+      ],
+      "matches": ["https://www.youtube.com/*", "https://youtube.com/*"]
+    }
+  ],
+  "sandbox": {
+    "pages": ["pose-sandbox.html"]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src https://us-central1-sign-mt.cloudfunctions.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://*.xethub.hf.co; worker-src 'self';",
+    "sandbox": "sandbox allow-scripts; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' blob:; img-src 'self' data: blob:;"
+  }
+}

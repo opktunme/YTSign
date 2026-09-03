@@ -1,0 +1,43 @@
+# Dependencies and local caches
+node_modules/
+.npm-cache/
+.cache/
+
+# Generated extension and test output
+dist/
+work/
+coverage/
+playwright-report/
+test-results/
+
+# Local research/vendor checkouts
+vendor-*/
+
+# Downloaded desktop tooling
+tools/
+
+# Experimental source artwork and heavyweight 3D exports
+assets/
+src/assets/
+*.blend
+*.blend1
+*.fbx
+*.glb
+*.zip
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.tmp
+*.log

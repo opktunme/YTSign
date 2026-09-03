@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest an improvement to YTSign
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Accessibility problem
+      description: What user need or barrier would this change address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Pakistan Sign Language
+        - American Sign Language
+        - Transcript/caption capture
+        - Local speech recognition
+        - Avatar and animation
+        - Privacy or security
+        - Developer tooling
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Community validation
+      description: If this changes signing, how could fluent signers validate it?

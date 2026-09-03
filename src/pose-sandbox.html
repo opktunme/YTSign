@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Signing pose renderer</title>
+    <style>
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #07131f; }
+      body { position: relative; }
+      #avatarCanvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      pose-viewer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        contain: strict;
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+    <script type="module" src="vendor/pose-viewer/pose-viewer.esm.js"></script>
+    <script type="module" src="pose-sandbox.js"></script>
+  </head>
+  <body>
+    <canvas id="avatarCanvas" aria-label="Animated signing avatar"></canvas>
+    <pose-viewer
+      id="signer"
+      renderer="canvas"
+      autoplay="false"
+      loop="false"
+      background="#07131f"
+    ></pose-viewer>
+  </body>
+</html>

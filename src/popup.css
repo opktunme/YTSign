@@ -1,0 +1,20 @@
+:root { color-scheme: dark; font-family: Inter, system-ui, "Segoe UI", sans-serif; }
+* { box-sizing: border-box; }
+body { width: 340px; margin: 0; color: #edf7ff; background: #07131f; }
+main { padding: 20px; background: radial-gradient(circle at 100% 0, rgba(109,93,252,.35), transparent 42%); }
+.eyebrow { color: #51dfbb; font-size: 9px; font-weight: 800; letter-spacing: .14em; }
+h1 { margin: 7px 0 4px; font-size: 21px; }
+h1 span { margin-right: 4px; }
+.lede { margin: 0 0 18px; color: #94aabc; font-size: 12px; line-height: 1.45; }
+label { display: grid; gap: 5px; margin-top: 11px; }
+label span { color: #8199aa; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+select { height: 38px; padding: 0 10px; border: 1px solid rgba(255,255,255,.13); border-radius: 11px; color: white; background: #102437; }
+button { width: 100%; height: 42px; margin-top: 14px; border: 0; border-radius: 12px; color: #041718; background: linear-gradient(135deg,#37ddb3,#76f0d0); font-weight: 800; cursor: pointer; }
+button.on { color: #fff3f4; background: linear-gradient(135deg,#9d4050,#d36073); }
+.secondary { margin-top: 9px; color: #eef5ff; background: #20314b; }
+.secondary.on { color: #fff; background: linear-gradient(135deg,#f0a84f,#d77542); }
+.audio-note { margin: 7px 2px 0; color: #9fb0c7; font-size: 11px; line-height: 1.35; }
+#saved { height: 18px; padding-top: 5px; color: #64e4c3; text-align: center; font-size: 9px; }
+ol { margin: 12px 0; padding: 12px 12px 12px 31px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; color: #b6c6d2; background: rgba(255,255,255,.03); font-size: 11px; line-height: 1.65; }
+aside { padding: 10px; border-radius: 10px; color: #9eb2c0; background: rgba(78,113,138,.13); font-size: 10px; line-height: 1.45; }
+footer { margin-top: 13px; color: #617b8d; font-size: 9px; line-height: 1.4; }

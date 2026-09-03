@@ -1,0 +1,62 @@
+name: Bug report
+description: Report a reproducible problem with YTSign
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve YTSign. Do not include private transcripts, captured audio, or sensitive video details.
+  - type: input
+    id: version
+    attributes:
+      label: YTSign version
+      placeholder: 0.5.1
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Chrome/Chromium version and operating system
+    validations:
+      required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: Signing option
+      options:
+        - Pakistan (PSL)
+        - Global (ASL)
+        - Both
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: Describe the shortest reliable sequence that shows the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Include console errors or a non-sensitive screenshot if useful.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed private transcripts, audio, credentials, and sensitive video information.
+          required: true
