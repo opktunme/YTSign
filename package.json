@@ -43,7 +43,7 @@
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
     "pose-viewer": "1.2.0",
-    "three": "^0.182.0"
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "esbuild": "0.25.12",
