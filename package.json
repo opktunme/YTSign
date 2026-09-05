@@ -41,7 +41,7 @@
     "verify": "npm run check && npm run test:navigation && npm run test:browser && npm run test:extension && npm run test:asr-extension && npm run test:audio-fallback"
   },
   "dependencies": {
-    "@huggingface/transformers": "^3.8.1",
+    "@huggingface/transformers": "^4.2.0",
     "pose-viewer": "1.2.0",
     "three": "^0.182.0"
   },
