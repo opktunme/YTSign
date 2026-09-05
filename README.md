@@ -20,11 +20,13 @@ It currently offers:
 - Automatically reads YouTube timed transcripts without requiring visible captions.
 - Internally observes caption data when public timed text is unavailable.
 - Falls back automatically to local multilingual Whisper speech recognition.
-- Handles English, Urdu, and Hindi text inputs in the verified transcript pipeline.
-- Renders pose data as a lightweight procedural 3D character.
-- Uses a deterministic animation clock and wrist-aligned fallback hands.
-- Keeps the animation envelope within the overlay at different sizes.
+- Accepts English, Urdu, and Hindi transcript text with its source-language label.
+- Renders a textured, rigged 3D avatar prepared in Blender, with a procedural fallback if the model cannot load.
+- Drives both arms, palms, and individual finger joints from the pose stream.
+- Frames the upper body so the face and hands remain large enough to inspect; the default medium overlay is 380 × 480 pixels.
+- Uses a deterministic animation clock and bridges brief gaps in hand tracking.
 - Supports drag, resize, minimize, close, fullscreen, and playback-rate changes.
+- Activates after navigation from the YouTube homepage or search without requiring a refresh.
 - Stores only extension preferences and transient capture state.
 
 ## How it works
@@ -40,7 +42,7 @@ YouTube transcript / internal caption data
                                     sign.mt pose translation
                                                │
                                                v
-                                  sandboxed procedural 3D signer
+                                    sandboxed 3D avatar
 ```
 
 Transcript text and locally derived speech text are sent to the sign.mt pose service only after the user enables signing. Raw tab audio is processed locally and is not intentionally uploaded or retained.
@@ -75,7 +77,9 @@ YTSign chooses the text source automatically:
 2. Internal YouTube caption data, with the visible caption layer kept off
 3. Local tab-audio recognition with `onnx-community/whisper-tiny`
 
-Timed text always wins. Whisper runs only when text sources are unavailable. Whisper translates recognized speech to English before the text enters the PSL/ASL pose pipeline; this is not a direct Urdu-to-PSL or Hindi-to-PSL translation model.
+Timed text takes priority. Transcript phrases are sent to sign.mt with their detected or supplied source-language label, including Urdu and Hindi. The extension does not translate all transcript text to English first; the external service controls its own translation pipeline.
+
+Whisper runs only when text sources are unavailable and translates recognized speech to English before requesting PSL/ASL poses. This fallback is automatic after signing is enabled, with no separate speech-recognition switch. YTSign does not include a directly trained Urdu-to-PSL or Hindi-to-PSL translation model.
 
 ## Permissions
 
@@ -106,30 +110,38 @@ Useful commands:
 | `npm run check` | Run unit tests and build. |
 | `npm run test:browser` | Exercise PSL/ASL rendering and the reported freeze regression. |
 | `npm run test:extension` | Load the actual extension on YouTube and verify motion, clipping, refresh recovery, and both signing options. |
+| `npm run test:navigation` | Check homepage-to-video activation, hiding on search, and re-entry without a reload. |
+| `npm run test:avatar-poses` | Render cached pose fixtures and check real hand-surface containment across their full timelines. |
+| `npm run demo:avatar` | Also record labeled PSL sample videos for a fluent signer's review. |
 | `npm run test:asr-extension` | Test local Whisper under the extension Content Security Policy. |
 | `npm run test:audio-fallback` | Test automatic transcript-to-audio fallback where browser automation permits tab capture. |
 | `npm run verify` | Run the complete local verification suite. |
 
 The browser integration scripts currently look for Microsoft Edge at its standard Windows installation path. Unit tests and the production build run in GitHub Actions on Linux.
 
+The avatar-pose diagnostics require the locally cached `.pose` fixtures in `work/avatar/poses/`; these external-service samples are not included in Git. An audio-capture smoke result marked `skipped` means manual toolbar verification is still required, not that end-to-end capture passed.
+
 ## Repository layout
 
 ```text
-src/        Chrome extension source
+src/        Chrome extension source and the bundled runtime avatar
 tests/      Unit tests
 scripts/    Build and browser/extension smoke tests
 licenses/   Notices copied into the extension build
 .github/    CI, issue templates, and contribution metadata
 ```
 
-Generated builds, downloaded models, browser profiles, Blender binaries, vendor research checkouts, and experimental 3D source artwork are intentionally excluded from Git.
+The selected runtime avatar GLB is included for the extension build. Generated builds, downloaded speech models, browser profiles, Blender binaries, vendor research checkouts, and experimental 3D source artwork are excluded from Git. See [AVATAR_PIPELINE.md](AVATAR_PIPELINE.md) for the Blender workflow and the distinction between mechanical tests and linguistic review.
 
 ## Project status
 
 YTSign is an early functional prototype, not a production interpreting service.
 
+See [VERIFICATION.md](VERIFICATION.md) for the current technical checks and explicitly unverified areas.
+
 - Pose translation requires the external sign.mt service and an internet connection.
-- The procedural character prioritizes readable motion over realism.
+- The selected avatar passes the current mechanical rig, export, hand-rendering, playback, and framing checks. Extreme bends can still show skin creasing or contact artifacts; these checks do not establish signing accuracy.
+- The current textured-avatar renderer does not yet animate facial grammar or mouth movements from the pose stream.
 - Whisper Tiny favors browser-friendly size over maximum recognition accuracy and may mishear names, noisy speech, Urdu/Hindi dialects, or low-resource languages.
 - Signing output has not yet undergone the Deaf-led linguistic validation required for production use.
 - The npm tree inherits a high-severity `sharp`/libvips advisory through Transformers.js 3.8.1. `sharp` is not copied into or executed by the Chrome extension; see [SECURITY.md](SECURITY.md).
@@ -138,10 +150,12 @@ YTSign is an early functional prototype, not a production interpreting service.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Sign-language changes should be reviewed by fluent members of the relevant signing community.
 
+Fluent PSL reviewers can use [PSL_REVIEW.md](PSL_REVIEW.md) to record clip-level intelligibility, finger and palm corrections, missing facial cues, and timestamped accept/reject decisions.
+
 Report vulnerabilities privately according to [SECURITY.md](SECURITY.md), not in a public issue. Community participation is governed by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Licensing
 
-YTSign's original source code is available under the [MIT License](LICENSE). Bundled libraries, downloaded model files, and the external sign.mt service remain under their own licenses and terms; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+YTSign's original source code is available under the [MIT License](LICENSE). The avatar includes Meshy-created artwork credited under CC BY 4.0 and MakeHuman/MPFB core assets released under CC0. Bundled libraries, downloaded model files, and the external sign.mt service remain under their own licenses and terms; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-The sign.mt project describes non-commercial conditions for its public client/service. Review the current terms and obtain the appropriate permission before commercial deployment.
+The [sign.mt / Rylo Translate license](https://github.com/sign/translate/blob/master/LICENSE.md) describes a noncommercial tier and a separate license for commercial organizations. Review the applicable service terms before commercial deployment.

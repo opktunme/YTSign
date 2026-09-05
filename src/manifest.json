@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "YTSign — Pakistan & Global",
   "short_name": "YTSign",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Real-time Pakistan (PSL) or Global (ASL) translation over YouTube transcripts or local AI audio transcription.",
   "permissions": ["storage", "activeTab", "tabCapture", "offscreen"],
   "host_permissions": [
@@ -29,7 +29,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.youtube.com/watch*", "https://youtube.com/watch*"],
+      "matches": ["https://www.youtube.com/*", "https://youtube.com/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
@@ -43,6 +43,7 @@
         "pose-sandbox.html",
         "pose-sandbox.js",
         "avatar-renderer.js",
+        "assets/avatar/signing-avatar-v6q3.glb",
         "vendor/pose-viewer/*"
       ],
       "matches": ["https://www.youtube.com/*", "https://youtube.com/*"]

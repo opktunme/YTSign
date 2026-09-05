@@ -239,14 +239,14 @@ export class ThreeAvatarRenderer {
   updateBody(body, scale) {
     const compact = body.length <= 10;
     const joint = (index, confidence = compact ? 0.05 : 0.12) => valid(body[index], confidence) ? point(body[index]) : null;
-    const leftShoulder = joint(compact ? 1 : 11);
-    const rightShoulder = joint(compact ? 0 : 12);
-    const leftElbow = joint(compact ? 3 : 13);
-    const rightElbow = joint(compact ? 2 : 14);
-    let leftWrist = joint(compact ? 5 : 15, compact ? 0.01 : 0.05);
-    let rightWrist = joint(compact ? 4 : 16, compact ? 0.01 : 0.05);
-    let leftHip = joint(compact ? 7 : 23);
-    let rightHip = joint(compact ? 6 : 24);
+    const leftShoulder = joint(compact ? 0 : 11);
+    const rightShoulder = joint(compact ? 1 : 12);
+    const leftElbow = joint(compact ? 2 : 13);
+    const rightElbow = joint(compact ? 3 : 14);
+    let leftWrist = joint(compact ? 4 : 15, compact ? 0.01 : 0.05);
+    let rightWrist = joint(compact ? 5 : 16, compact ? 0.01 : 0.05);
+    let leftHip = joint(compact ? 6 : 23);
+    let rightHip = joint(compact ? 7 : 24);
     if (!leftShoulder || !rightShoulder) return null;
 
     const shoulderWidth = distance(leftShoulder, rightShoulder);

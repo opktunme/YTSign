@@ -10,7 +10,7 @@ body:
     id: version
     attributes:
       label: YTSign version
-      placeholder: 0.5.1
+      placeholder: 0.6.0
     validations:
       required: true
   - type: input

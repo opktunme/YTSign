@@ -7,9 +7,9 @@ export const DEFAULT_SETTINGS = Object.freeze({
 });
 
 export const SIZE_PRESETS = Object.freeze({
-  small: { width: 258, height: 370 },
-  medium: { width: 292, height: 414 },
-  large: { width: 332, height: 476 },
+  small: { width: 320, height: 420 },
+  medium: { width: 380, height: 480 },
+  large: { width: 460, height: 560 },
 });
 
 export function normalizeWhitespace(value) {
@@ -116,4 +116,11 @@ export function poseEndpoint({ text, spokenLanguage, signedLanguage }) {
 
 export function settingSize(size) {
   return SIZE_PRESETS[size] || SIZE_PRESETS.medium;
+}
+export function isYouTubeWatchUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && ["www.youtube.com", "youtube.com"].includes(url.hostname) &&
+      url.pathname === "/watch" && Boolean(url.searchParams.get("v"));
+  } catch { return false; }
 }

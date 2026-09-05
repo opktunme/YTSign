@@ -115,7 +115,7 @@ try {
 } catch (error) {
   const detail = error?.stack || String(error);
   if (/activeTab|not been invoked|tab capture|capture permission|user gesture/iu.test(detail)) {
-    report.ok = true;
+    report.ok = null;
     report.skipped = "Chrome requires a real user invocation of the extension toolbar popup before tab capture; headless automation cannot grant it.";
     report.manualVerification = "Open a YouTube watch page, open the extension, and choose Enable on YouTube once. Speech recognition should then take over automatically when text is unavailable.";
   } else {
@@ -129,4 +129,4 @@ try {
 }
 
 console.log(JSON.stringify({ ...report, reportFile }, null, 2));
-if (!report.ok) process.exitCode = 1;
+if (report.ok === false) process.exitCode = 1;

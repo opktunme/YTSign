@@ -1,6 +1,6 @@
 # Privacy notes
 
-- The extension only runs on YouTube watch pages.
+- A navigation listener loads on YouTube pages so clicking from the homepage or search into a video works without refreshing. The signing overlay and text/audio processing activate only on watch pages; processing is suspended when leaving a video.
 - It first reads the video's available timed-text/transcript data. When necessary it activates YouTube caption data internally without requiring the viewer to turn captions on.
 - No caption text is transmitted until the user enables signing.
 - Enabled caption phrases are sent to `us-central1-sign-mt.cloudfunctions.net` to generate pose animation.

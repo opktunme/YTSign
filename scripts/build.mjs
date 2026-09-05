@@ -1,15 +1,17 @@
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { resolve, sep } from "node:path";
 import { build } from "esbuild";
 
 const root = resolve(import.meta.dirname, "..");
 const src = resolve(root, "src");
-const dist = resolve(root, "dist");
+const dist = resolve(root, process.env.YTSIGN_BUILD_OUTDIR || "dist");
+if (!dist.startsWith(root + sep)) throw new Error("Build output must be a subdirectory of the project");
 
 await mkdir(dist, { recursive: true });
 await mkdir(resolve(dist, "vendor", "pose-viewer"), { recursive: true });
 await mkdir(resolve(dist, "vendor", "transformers"), { recursive: true });
 await mkdir(resolve(dist, "licenses"), { recursive: true });
+await mkdir(resolve(dist, "assets", "avatar"), { recursive: true });
 
 await build({
   entryPoints: [resolve(src, "content-entry.js")],
@@ -51,7 +53,13 @@ for (const file of [
   await cp(resolve(src, file), resolve(dist, file), { force: true });
 }
 
-for (const file of ["README.md", "PRIVACY.md", "THIRD_PARTY_NOTICES.md"]) {
+await cp(
+  resolve(src, "assets", "avatar", "signing-avatar-v6q3.glb"),
+  resolve(dist, "assets", "avatar", "signing-avatar-v6q3.glb"),
+  { force: true },
+);
+
+for (const file of ["README.md", "PRIVACY.md", "THIRD_PARTY_NOTICES.md", "LICENSE", "SECURITY.md", "AVATAR_PIPELINE.md", "PSL_REVIEW.md", "VERIFICATION.md"]) {
   await cp(resolve(root, file), resolve(dist, file), { force: true });
 }
 

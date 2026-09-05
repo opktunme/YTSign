@@ -4,9 +4,18 @@ import {
   captionDelta,
   dedupeDoubledCaption,
   detectSpokenLanguage,
+  isYouTubeWatchUrl,
   poseEndpoint,
   splitCaption,
 } from "../src/core.mjs";
+
+test("activates only on YouTube watch routes during single-page navigation", () => {
+  assert.equal(isYouTubeWatchUrl("https://www.youtube.com/watch?v=abc"), true);
+  assert.equal(isYouTubeWatchUrl("https://youtube.com/watch?v=abc&t=3"), true);
+  for (const url of ["https://www.youtube.com/", "https://www.youtube.com/results?search_query=abc",
+    "https://www.youtube.com/shorts/abc", "https://www.youtube.com/watch", "https://example.com/watch?v=abc"])
+    assert.equal(isYouTubeWatchUrl(url), false, url);
+});
 
 test("detects English, Hindi, and Urdu caption scripts", () => {
   assert.equal(detectSpokenLanguage("How are you?"), "en");

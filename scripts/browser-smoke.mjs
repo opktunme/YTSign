@@ -78,7 +78,7 @@ try {
     error: request.failure()?.errorText || "unknown",
   }));
   page.on("response", (response) => {
-    if (response.url().endsWith("signing-avatar.glb")) {
+    if (response.url().includes("/assets/avatar/signing-avatar-")) {
       report.avatarResponse = { url: response.url(), status: response.status() };
     }
     if (response.url().includes("spoken_text_to_signed_pose")) {
@@ -134,9 +134,187 @@ try {
     }
     return colored > 200;
   }, null, { timeout: 60_000 });
+  await renderer.waitForFunction(() => {
+    const canvas = document.getElementById("avatarCanvas");
+    return canvas?.dataset?.avatarRenderer === "realistic" && canvas?.dataset?.avatarModel === "ready";
+  }, null, { timeout: 120_000 });
   report.checks.avatarRenderer = await renderer.locator("#avatarCanvas").getAttribute("data-avatar-renderer");
-  if (report.checks.avatarRenderer !== "procedural-3d") {
-    throw new Error(`Expected the procedural 3D renderer, received ${report.checks.avatarRenderer || "no renderer"}`);
+  if (report.checks.avatarRenderer !== "realistic") {
+    throw new Error(`Expected the realistic GLB renderer, received ${report.checks.avatarRenderer || "no renderer"}`);
+  }
+  report.checks.syntheticRig = await renderer.evaluate(async () => {
+    const avatar = globalThis.__ytsignCreateGltfAvatarRenderer?.();
+    if (!avatar) return { ready: false, error: "QA renderer factory was not exposed" };
+    avatar.resize(256, 256);
+    await avatar.loadPromise;
+    const components = [
+      { name: "POSE_LANDMARKS" },
+      { name: "LEFT_HAND_LANDMARKS" },
+      { name: "RIGHT_HAND_LANDMARKS" },
+    ];
+    const joint = (X, Y, Z = 0, C = 1) => ({ X, Y, Z, C });
+    const body = [
+      joint(390, 235), joint(250, 235),
+      joint(420, 315), joint(220, 315),
+      joint(430, 420), joint(210, 420),
+      joint(370, 510), joint(270, 510),
+    ];
+    const add = (origin, value, mirror) => joint(
+      origin.X + value[0] * mirror,
+      origin.Y + value[1],
+      origin.Z + value[2],
+    );
+    const makeHand = (side, shape = "open") => {
+      const mirror = side === "Left" ? 1 : -1;
+      const wrist = joint(side === "Left" ? 430 : 210, 420, 0);
+      const open = {
+        Thumb: [[28, -7, 0], [47, -18, -2], [62, -29, -3], [75, -37, -4]],
+        // Keep the neutral synthetic palm inside the donor's unsaturated
+        // metacarpal range. The former extra-wide fixture saturated both the
+        // open and curled IndexMeta at the same 18-degree limit, so a working
+        // control falsely appeared frozen. The curled fixture below remains a
+        // valid, wider differential-abduction target.
+        Index: [[10, -38, 0], [11, -73, 0], [12, -103, 0], [13, -129, 0]],
+        Middle: [[3, -40, 0], [3, -80, 0], [3, -115, 0], [3, -144, 0]],
+        Ring: [[-4, -38, 0], [-5, -75, 0], [-6, -107, 0], [-7, -133, 0]],
+        Pinky: [[-10, -34, 0], [-13, -65, 0], [-15, -91, 0], [-17, -113, 0]],
+      };
+      const curled = {
+        Thumb: [[34, -2, 10], [48, -13, 22], [53, -29, 38], [48, -42, 51]],
+        Index: [[29, -25, 7], [31, -50, 22], [29, -54, 49], [25, -41, 68]],
+        Middle: [[9, -31, 9], [10, -59, 25], [8, -63, 55], [5, -48, 76]],
+        Ring: [[-15, -27, 11], [-17, -53, 29], [-19, -56, 58], [-20, -42, 78]],
+        Pinky: [[-35, -19, 13], [-39, -42, 31], [-42, -44, 57], [-43, -31, 75]],
+      };
+      const source = shape === "curled" ? curled : open;
+      const result = [wrist];
+      for (const finger of ["Thumb", "Index", "Middle", "Ring", "Pinky"]) {
+        for (const [pointIndex, value] of source[finger].entries()) {
+          const point = add(wrist, value, mirror);
+          if (shape === "depth" && finger === "Index") {
+            point.Z += [0, 10, 42, 84][pointIndex];
+          }
+          result.push(point);
+        }
+      }
+      return result;
+    };
+    const handControls = (side) => [
+      ...["Index", "Middle", "Ring", "Pinky"].map((finger) => `${side}Hand${finger}Meta`),
+      ...["Thumb", "Index", "Middle", "Ring", "Pinky"].flatMap((finger) =>
+        [1, 2, 3].map((jointIndex) => `${side}Hand${finger}${jointIndex}`)),
+    ];
+    const quaternion = (name) => avatar.bones.get(name)?.quaternion.clone();
+    const snapshot = (names) => Object.fromEntries(names.map((name) => [name, quaternion(name)]));
+    const angleDegrees = (left, right) => left && right
+      ? left.angleTo(right) * 180 / Math.PI
+      : Number.POSITIVE_INFINITY;
+    const person = (leftHand, rightHand) => ({
+      POSE_LANDMARKS: body,
+      LEFT_HAND_LANDMARKS: leftHand || [],
+      RIGHT_HAND_LANDMARKS: rightHand || [],
+    });
+    const controls = [...handControls("Left"), ...handControls("Right")];
+    const handMaterials = [];
+    const nailMeshes = [];
+    avatar.root.traverse((node) => {
+      if (!node.isMesh) return;
+      if (node.name.startsWith("YTSign_PSL_Hand_")) {
+        const materials = Array.isArray(node.material) ? node.material : [node.material];
+        for (const material of materials) handMaterials.push({
+          name: material.name,
+          transparent: material.transparent,
+          opacity: material.opacity,
+          depthWrite: material.depthWrite,
+          depthTest: material.depthTest,
+        });
+      }
+      if (node.name.startsWith("YTSign_Nail_")) {
+        nailMeshes.push({ name: node.name, visible: node.visible });
+      }
+    });
+    const materialRegression = {
+      handMeshCount: handMaterials.length,
+      nailMeshCount: nailMeshes.length,
+      handsOpaque: handMaterials.length === 2 && handMaterials.every((material) =>
+        material.transparent === false && material.opacity === 1 &&
+        material.depthWrite === true && material.depthTest === true),
+      nailsHidden: nailMeshes.length === 10 && nailMeshes.every((mesh) => mesh.visible === false),
+      handMaterials,
+      nailMeshes,
+    };
+
+    avatar.resetSmoothing();
+    avatar.draw(person(makeHand("Left"), makeHand("Right")), components, 0);
+    const open = snapshot(controls);
+    const openCounts = { left: avatar.handDriveCounts.Left, right: avatar.handDriveCounts.Right };
+    avatar.draw(person(makeHand("Left", "curled"), makeHand("Right", "curled")), components, 0.25);
+    const curled = snapshot(controls);
+    const curledCounts = { left: avatar.handDriveCounts.Left, right: avatar.handDriveCounts.Right };
+    const changed = Object.fromEntries(controls.map((name) => [name, angleDegrees(open[name], curled[name])]));
+    const unchangedControls = Object.entries(changed)
+      .filter(([, degrees]) => !Number.isFinite(degrees) || degrees < 0.5)
+      .map(([name]) => name);
+
+    avatar.resetSmoothing();
+    avatar.draw(person(makeHand("Left"), []), components, 1);
+    const explicitSide = { left: avatar.handDriveCounts.Left, right: avatar.handDriveCounts.Right };
+
+    avatar.resetSmoothing();
+    avatar.draw(person(makeHand("Left"), []), components, 2);
+    const depthBaseline = snapshot(["LeftHandIndex1", "LeftHandIndex2", "LeftHandIndex3"]);
+    avatar.draw(person(makeHand("Left", "depth"), []), components, 2.25);
+    const depthPose = snapshot(["LeftHandIndex1", "LeftHandIndex2", "LeftHandIndex3"]);
+    const depthResponseDegrees = Object.fromEntries(Object.keys(depthBaseline).map((name) =>
+      [name, angleDegrees(depthBaseline[name], depthPose[name])]));
+
+    avatar.resetSmoothing();
+    avatar.draw(person(makeHand("Left", "curled"), []), components, 3);
+    const dropoutBone = "LeftHandIndex2";
+    const dropoutStart = quaternion(dropoutBone);
+    const rest = avatar.rest.get(dropoutBone)?.quaternion.clone();
+    avatar.draw(person([], []), components, 3.04);
+    const dropoutHold = quaternion(dropoutBone);
+    avatar.draw(person([], []), components, 3.20);
+    const dropoutBlend = quaternion(dropoutBone);
+    avatar.draw(person([], []), components, 3.50);
+    const dropoutRelease = quaternion(dropoutBone);
+    const dropout = {
+      holdDeltaDegrees: angleDegrees(dropoutStart, dropoutHold),
+      startFromRestDegrees: angleDegrees(dropoutStart, rest),
+      blendFromRestDegrees: angleDegrees(dropoutBlend, rest),
+      releaseFromRestDegrees: angleDegrees(dropoutRelease, rest),
+    };
+
+    const result = {
+      ready: avatar.ready,
+      requiredBoneCount: avatar.bones.size,
+      weightedHandControlCount: controls.length,
+      openCounts,
+      curledCounts,
+      changedControlCount: controls.length - unchangedControls.length,
+      minimumControlChangeDegrees: Math.min(...Object.values(changed)),
+      unchangedControls,
+      explicitSide,
+      depthResponseDegrees,
+      dropout,
+      materialRegression,
+    };
+    result.pass = result.ready && result.requiredBoneCount >= 72 &&
+      openCounts.left === 20 && openCounts.right === 20 &&
+      curledCounts.left === 20 && curledCounts.right === 20 &&
+      result.changedControlCount === 38 && result.minimumControlChangeDegrees >= 0.5 &&
+      materialRegression.handsOpaque && materialRegression.nailsHidden &&
+      explicitSide.left === 20 && explicitSide.right === 0 &&
+      Object.values(depthResponseDegrees).every((degrees) => degrees >= 0.5) &&
+      dropout.holdDeltaDegrees < 0.1 &&
+      dropout.blendFromRestDegrees < dropout.startFromRestDegrees &&
+      dropout.releaseFromRestDegrees < 0.1;
+    avatar.renderer.dispose();
+    return result;
+  });
+  if (!report.checks.syntheticRig?.pass) {
+    throw new Error(`Synthetic all-finger rig QA failed: ${JSON.stringify(report.checks.syntheticRig)}`);
   }
   const aslDuration = await renderer.locator("#signer").evaluate((element) => element.duration);
   report.checks.asl = {
@@ -168,6 +346,26 @@ try {
   if (!report.checks.naturalMotion || report.checks.naturalMotion.timeAdvance < 0.5 || report.checks.naturalMotion.uniqueFrames < 3) {
     throw new Error(`Avatar did not animate during natural playback: ${JSON.stringify(report.checks.naturalMotion)}`);
   }
+  report.checks.poseMotionLandmarks = await renderer.evaluate(async () => {
+    const pose = await document.getElementById("signer").getPose();
+    const fractions = [0.08, 0.24, 0.4, 0.56, 0.72, 0.88];
+    return fractions.map((fraction) => {
+      const frameIndex = Math.min(pose.body.frames.length - 1, Math.floor(pose.body.frames.length * fraction));
+      const person = pose.body.frames[frameIndex]?.people?.[0] || {};
+      const components = {};
+      for (const component of pose.header.components || []) {
+        const joints = person[component.name] || [];
+        components[component.name] = {
+          count: joints.length,
+          valid: joints.filter((joint) => joint && Number(joint.C) > 0.12).length,
+          signature: joints.slice(0, 21).map((joint) => joint
+            ? [joint.X, joint.Y, joint.Z, joint.C].map((value) => Number(value).toFixed(2)).join(",")
+            : "-").join("|"),
+        };
+      }
+      return { fraction, frameIndex, components };
+    });
+  });
   report.checks.motion = await renderer.evaluate(async () => {
     const signer = document.getElementById("signer");
     const canvas = document.getElementById("avatarCanvas");
@@ -200,7 +398,21 @@ try {
           if (delta > 30) changedPixels += 1;
         }
       }
-      samples.push({ fraction, hash: hash >>> 0, changedPixels, absoluteDelta });
+      samples.push({
+        fraction,
+        hash: hash >>> 0,
+        changedPixels,
+        absoluteDelta,
+        drivenBones: Number(canvas.dataset.drivenBones || 0),
+        trackedHands: Number(canvas.dataset.trackedHands || 0),
+        leftHandBones: Number(canvas.dataset.leftHandBones || 0),
+        rightHandBones: Number(canvas.dataset.rightHandBones || 0),
+        leftMissingHandControls: canvas.dataset.leftMissingHandControls || "",
+        rightMissingHandControls: canvas.dataset.rightMissingHandControls || "",
+        poseTime: canvas.dataset.poseTime || "",
+        boneSignature: canvas.dataset.boneSignature || "",
+        targetBoneSignature: canvas.dataset.targetBoneSignature || "",
+      });
       previous = new Uint8ClampedArray(pixels);
     }
     signer.currentTime = 0;
@@ -214,6 +426,12 @@ try {
   });
   if (!report.checks.motion || report.checks.motion.uniqueFrames < 4 || report.checks.motion.maximumChangedPixels < 500) {
     throw new Error(`Avatar did not visibly animate: ${JSON.stringify(report.checks.motion)}`);
+  }
+  const strongestHandFrame = report.checks.motion.samples.reduce((best, sample) =>
+    sample.leftHandBones + sample.rightHandBones > best.leftHandBones + best.rightHandBones ? sample : best,
+  report.checks.motion.samples[0]);
+  if (strongestHandFrame.leftHandBones !== 20 || strongestHandFrame.rightHandBones !== 20) {
+    throw new Error(`Live pose never drove every weighted finger control on both hands: ${JSON.stringify(strongestHandFrame)}`);
   }
   report.checks.motionScreenshots = [];
   for (const fraction of [0.08, 0.32, 0.56, 0.8]) {
@@ -296,10 +514,25 @@ try {
       startTime,
       endTime: signer.currentTime,
       visibleHands: Number(canvas?.dataset.visibleHands || 0),
+      trackedHands: Number(canvas?.dataset.trackedHands || 0),
+      leftHandBones: Number(canvas?.dataset.leftHandBones || 0),
+      rightHandBones: Number(canvas?.dataset.rightHandBones || 0),
+      leftMissingHandControls: canvas?.dataset.leftMissingHandControls || "",
+      rightMissingHandControls: canvas?.dataset.rightMissingHandControls || "",
     };
   });
-  if (report.checks.reportedFreezeRegression.endTime - report.checks.reportedFreezeRegression.startTime < 0.4 ||
-      report.checks.reportedFreezeRegression.visibleHands !== 2) {
+  const regression = report.checks.reportedFreezeRegression;
+  const completeTrackedHands = [regression.leftHandBones, regression.rightHandBones]
+    .filter((count) => count === 20).length;
+  const hasPartialHand = [regression.leftHandBones, regression.rightHandBones]
+    .some((count) => count > 0 && count < 20);
+  // A source pose may legitimately contain a one-handed sign. Require every
+  // provided hand to be complete and the reported count to match it; never
+  // manufacture a two-hand PASS when the pose only tracked one.
+  if (regression.endTime - regression.startTime < 0.4 ||
+      completeTrackedHands < 1 || hasPartialHand ||
+      regression.visibleHands !== completeTrackedHands ||
+      regression.trackedHands !== completeTrackedHands) {
     throw new Error(`Reported frozen/handless phrase regressed: ${JSON.stringify(report.checks.reportedFreezeRegression)}`);
   }
   await renderer.locator("#avatarCanvas").screenshot({ path: reportedPhraseScreenshot });
@@ -321,7 +554,7 @@ try {
   );
   report.failedRequests = failedRequests;
   if (report.checks.avatarRenderer === "realistic" && report.avatarResponse?.status === 200) {
-    report.failedRequests = failedRequests.filter((entry) => !entry.url.endsWith("signing-avatar.glb"));
+    report.failedRequests = failedRequests.filter((entry) => !entry.url.includes("/assets/avatar/signing-avatar-"));
   }
   report.poseResponses = poseResponses;
   await page.screenshot({ path: screenshot, fullPage: true });
@@ -349,7 +582,7 @@ try {
         modelBounds: canvas?.dataset?.avatarBounds || "",
         canvas: canvas ? { width: canvas.width, height: canvas.height, colored } : null,
         resources: performance.getEntriesByType("resource")
-          .filter((entry) => entry.name.includes("signing-avatar.glb"))
+          .filter((entry) => entry.name.includes("/assets/avatar/signing-avatar-"))
           .map((entry) => ({
             name: entry.name,
             duration: entry.duration,

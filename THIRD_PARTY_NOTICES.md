@@ -1,5 +1,19 @@
 # Third-party notices
 
+## Bundled signing avatar
+
+The runtime GLB under `src/assets/avatar/` combines a character created with [Meshy](https://www.meshy.ai/) — [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — with MakeHuman/MPFB core anatomical hand geometry, rig data, and skin textures released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+
+YTSign modifications made in Blender include replacement hand surfaces, adapted skeleton and skin weights, fingertip controls, material adjustments, and optimized textures. These avatar credits and terms are separate from the MIT license for YTSign's original source code.
+
+Meshy's [Terms of Service](https://www.meshy.ai/terms-of-use), dated March 7, 2026, specify CC BY 4.0 for free-plan outputs. Its [asset-ownership guidance](https://help.meshy.ai/en/articles/9992001-can-i-use-meshy-assets-commercially-license-copyright-explained) describes ownership of paid-plan outputs. This project retains the CC BY 4.0 attribution without assuming which plan was used to generate the supplied character.
+
+MakeHuman asset credits: Data Collection AB, Joel Palmius, Jonas Hauquier, and the MakeHuman Community. The donor uses the core `hm08` base mesh and system skin assets, including `young_asian_female` / `young_lightskinned_female_diffuse3.png`, with a blended and tinted skin texture. The original asset headers record their September 2020 CC0 release.
+
+Sources: [MPFB 2.0.17 license, assets and output sections](https://github.com/makehumancommunity/mpfb2/blob/v2.0.17/LICENSE.md), [MakeHuman system asset pack](https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html).
+
+The MPFB application's GPL license is distinct from its core assets' CC0 dedication. Blender and MPFB are authoring tools; their application code is not bundled in the extension.
+
 ## pose-viewer
 
 Copyright the sign-language-processing contributors. Distributed under the MIT License.
@@ -10,7 +24,7 @@ The unmodified browser distribution from `pose-viewer` 1.2.0 is bundled under `d
 
 ## Three.js
 
-The procedural 3D signing-avatar renderer uses Three.js, distributed under the MIT License.
+The textured-avatar renderer and procedural fallback use Three.js, distributed under the MIT License.
 
 Source: https://github.com/mrdoob/three.js
 
@@ -19,6 +33,8 @@ Source: https://github.com/mrdoob/three.js
 Pose translations are requested from the public sign.mt spoken-to-signed pose endpoint. The sign.mt client project describes free use for individuals, nonprofits, and educational institutions under CC BY-NC-SA 4.0 and requires a separate license for commercial organizations.
 
 Source: https://github.com/sign/translate
+
+License: https://github.com/sign/translate/blob/master/LICENSE.md
 
 Service: https://sign.mt
 

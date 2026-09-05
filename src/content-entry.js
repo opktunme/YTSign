@@ -1,5 +1,6 @@
 import {
   DEFAULT_SETTINGS,
+  isYouTubeWatchUrl,
   captionDelta,
   detectSpokenLanguage,
   normalizeWhitespace,
@@ -13,6 +14,7 @@ import {
   selectCaptionTrack,
   transcriptTrackUrl,
 } from "./transcript.mjs";
+import { overlayLayout } from "./overlay-layout.mjs";
 
 const CHANNEL = "youtube-sign-live-v1";
 const ROOT_ID = "youtube-sign-live-root";
@@ -183,7 +185,7 @@ function createOverlay() {
     borderRadius: "22px",
     overflow: "hidden",
     boxShadow: "0 18px 40px rgba(0,0,0,.42)",
-    transition: "width 160ms ease, height 160ms ease, opacity 160ms ease",
+    transition: "opacity 160ms ease",
   });
 
   iframe = document.createElement("iframe");
@@ -227,8 +229,10 @@ function createOverlay() {
 }
 
 function showOverlay() {
+  if (!isYouTubeWatchUrl(location.href)) return;
   root.style.display = "block";
   toggle.style.display = "none";
+  positionOverPlayer();
   postToViewer("visibility", { visible: true });
 }
 
@@ -240,30 +244,42 @@ function hideOverlay() {
 
 function applySize(size, persist = true) {
   settings.size = size;
-  const preset = settingSize(size);
-  root.style.width = `${preset.width}px`;
-  root.style.height = `${preset.height}px`;
-  if (!manuallyPositioned) positionOverPlayer();
+  if (!positionOverPlayer()) {
+    const preset = settingSize(size);
+    root.style.width = `${Math.max(1, Math.min(preset.width, innerWidth - 28))}px`;
+    root.style.height = `${Math.max(1, Math.min(preset.height, innerHeight - 28))}px`;
+  }
   if (persist) chrome.storage.local.set({ youtubeSignSettings: settings });
 }
 
 function positionOverPlayer() {
-  if (!root || !toggle || !playerElement) return;
+  if (!root || !toggle || !playerElement) return false;
   const rect = playerElement.getBoundingClientRect();
-  if (rect.width < 160 || rect.height < 120) return;
-  const padding = 14;
-  const controlsClearance = 54;
-  const left = Math.max(padding, Math.min(innerWidth - root.offsetWidth - padding, rect.right - root.offsetWidth - padding));
-  const top = Math.max(padding, Math.min(innerHeight - root.offsetHeight - padding, rect.bottom - root.offsetHeight - controlsClearance));
-  root.style.left = `${left}px`;
-  root.style.top = `${top}px`;
+  const current = root.getBoundingClientRect();
+  const layout = overlayLayout({
+    player: rect,
+    viewport: { width: innerWidth, height: innerHeight },
+    preset: settingSize(settings.size),
+    position: manuallyPositioned ? {
+      left: Number.parseFloat(root.style.left) || current.left,
+      top: Number.parseFloat(root.style.top) || current.top,
+    } : null,
+  });
+  if (!layout) return false;
+  // Calculate the anchor from the fitted target size, never offsetWidth from
+  // a previous size or a hidden/minimized overlay.
+  root.style.width = `${layout.width}px`;
+  root.style.height = `${layout.height}px`;
+  root.style.left = `${layout.left}px`;
+  root.style.top = `${layout.top}px`;
   root.style.right = "auto";
   root.style.bottom = "auto";
 
-  toggle.style.left = `${Math.max(padding, Math.min(innerWidth - 62, rect.right - 62))}px`;
-  toggle.style.top = `${Math.max(padding, Math.min(innerHeight - 62, rect.bottom - 108))}px`;
+  toggle.style.left = `${layout.toggleLeft}px`;
+  toggle.style.top = `${layout.toggleTop}px`;
   toggle.style.right = "auto";
   toggle.style.bottom = "auto";
+  return true;
 }
 
 function beginDrag(message) {
@@ -436,7 +452,7 @@ function connectCaptionObserver() {
   playerResizeObserver?.disconnect();
   playerElement = player;
   playerResizeObserver = new ResizeObserver(() => {
-    if (!manuallyPositioned) positionOverPlayer();
+    positionOverPlayer();
   });
   playerResizeObserver.observe(player);
   captionObserver = new MutationObserver(() => {
@@ -521,6 +537,7 @@ function syncTranscriptToVideo(force = false) {
 }
 
 async function startCaptionCapture() {
+  if (!started || !isYouTubeWatchUrl(location.href)) return;
   const generation = ++captureGeneration;
   createOverlay();
   clearTimeout(noCaptionTimer);
@@ -622,6 +639,17 @@ function resetForNavigation() {
   transcriptIndex = -1;
   manuallyPositioned = false;
   postToViewer("clear");
+  if (!isYouTubeWatchUrl(location.href)) {
+    if (root) root.style.display = "none";
+    if (toggle) toggle.style.display = "none";
+    void setAutomaticAudioEnabled(false);
+    return;
+  }
+  createOverlay();
+  root.style.display = "block";
+  toggle.style.display = "none";
+  applySize(settings.size, false);
+  postToViewer("settings", { settings, caption: "", sourceLanguage: "en" });
   if (started) setTimeout(() => startCaptionCapture(), 450);
 }
 
@@ -644,7 +672,7 @@ document.addEventListener("fullscreenchange", moveIntoFullscreen);
 document.addEventListener("yt-navigate-finish", checkNavigation);
 window.addEventListener("popstate", checkNavigation);
 window.addEventListener("resize", () => {
-  if (!manuallyPositioned) positionOverPlayer();
+  positionOverPlayer();
 });
 window.addEventListener("scroll", () => {
   if (!manuallyPositioned) positionOverPlayer();
@@ -660,8 +688,10 @@ chrome.storage.local.get("youtubeSignSettings", (stored) => {
     chrome.storage.local.set({ youtubeSignSettings: settings });
   }
   started = Boolean(settings.enabled);
-  createOverlay();
-  applySize(settings.size, false);
+  if (isYouTubeWatchUrl(location.href)) {
+    createOverlay();
+    applySize(settings.size, false);
+  }
   postToViewer("settings", { settings, caption: currentCaption, sourceLanguage: currentLanguage });
   if (started) void startCaptionCapture();
 });
@@ -671,13 +701,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const wasStarted = started;
   settings = { ...settings, ...changes.youtubeSignSettings.newValue };
   started = Boolean(settings.enabled);
-  applySize(settings.size, false);
+  if (root) applySize(settings.size, false);
   postToViewer("settings", { settings, caption: currentCaption, sourceLanguage: currentLanguage });
   if (started && !wasStarted) void startCaptionCapture();
   if (!started && wasStarted) stopCaptureFlow();
 });
 
 chrome.runtime.onMessage.addListener((message) => {
+  if (!started || !isYouTubeWatchUrl(location.href)) return;
   if (message?.type === "asr-status") {
     setCaptureStatus(message.status);
     return;

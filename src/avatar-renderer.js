@@ -1,4 +1,5 @@
 import { ThreeAvatarRenderer } from "./three-avatar-renderer.js";
+import { GltfAvatarRenderer } from "./gltf-avatar-renderer.js";
 
 const BACKGROUND = "#07131f";
 const HAND_CONNECTIONS = [
@@ -110,13 +111,22 @@ export function fitPoseToViewport(pose, width, height) {
       for (let componentIndex = 0; componentIndex < components.length; componentIndex += 1) {
         const component = components[componentIndex];
         const sourceJoints = sourcePerson[component.name] || [];
+        const isHand = componentKind(component.name).toLowerCase().includes("hand");
+        const sourceDepth = Number(pose.header.depth);
+        const depthToXY = sourceDepth > 0 ? originalWidth / sourceDepth : originalWidth;
+        const wristDepth = Number.isFinite(sourceJoints[0]?.Z) ? sourceJoints[0].Z : 0;
         person[component.name] = Array.from({ length: sourceJoints.length }, (_, jointIndex) => {
           const joint = sourceJoints[jointIndex];
           if (!joint) return null;
           return {
             X: Number.isFinite(joint.X) ? joint.X * scale + offsetX : joint.X,
             Y: Number.isFinite(joint.Y) ? joint.Y * scale + offsetY : joint.Y,
-            Z: Number.isFinite(joint.Z) ? joint.Z * scale : joint.Z,
+            // sign.mt stores hand depth in normalized pose units around the
+            // wrist while X/Y are pixels. Convert wrist-relative Z to the
+            // same scale so palm orientation and foreshortening survive.
+            Z: Number.isFinite(joint.Z)
+              ? (isHand ? (joint.Z - wristDepth) * depthToXY * scale : joint.Z * scale)
+              : joint.Z,
             C: joint.C,
           };
         });
@@ -312,17 +322,17 @@ function drawHuman(context, person, components, scale) {
   const rightHand = groups.rightHand || [];
   const compact = body.length <= 10;
   const joint = (index) => valid(body[index], compact ? 0.05 : 0.12) ? point(body[index]) : null;
-  // sign.mt pose output uses eight joints: R/L shoulders, R/L elbows,
-  // R/L wrists, and R/L hips. Keep MediaPipe's 33-point layout as well.
+  // sign.mt pose output uses eight joints: L/R shoulders, L/R elbows,
+  // L/R wrists, and L/R hips. Keep MediaPipe's 33-point layout as well.
   const neck = null;
-  const leftShoulder = joint(compact ? 1 : 11);
-  const rightShoulder = joint(compact ? 0 : 12);
-  const leftElbow = joint(compact ? 3 : 13);
-  const rightElbow = joint(compact ? 2 : 14);
-  const leftWrist = joint(compact ? 5 : 15);
-  const rightWrist = joint(compact ? 4 : 16);
-  let leftHip = joint(compact ? 7 : 23);
-  let rightHip = joint(compact ? 6 : 24);
+  const leftShoulder = joint(compact ? 0 : 11);
+  const rightShoulder = joint(compact ? 1 : 12);
+  const leftElbow = joint(compact ? 2 : 13);
+  const rightElbow = joint(compact ? 3 : 14);
+  const leftWrist = joint(compact ? 4 : 15);
+  const rightWrist = joint(compact ? 5 : 16);
+  let leftHip = joint(compact ? 6 : 23);
+  let rightHip = joint(compact ? 7 : 24);
   const shoulderWidth = leftShoulder && rightShoulder ? distance(leftShoulder, rightShoulder) : 45 * scale;
   const armWidth = Math.max(5, shoulderWidth * 0.12);
   const skin = "#d9a17c";
@@ -400,11 +410,12 @@ export class SigningAvatarRenderer {
     this.context = canvas.getContext("2d", { alpha: false });
     this.pose = null;
     this.mode = "avatar";
+    this.realisticAvatar = new GltfAvatarRenderer();
     this.threeAvatar = new ThreeAvatarRenderer();
     this.lastTime = 0;
     this.canvas.width = 1;
     this.canvas.height = 1;
-    this.canvas.dataset.avatarRenderer = "procedural-3d";
+    this.canvas.dataset.avatarRenderer = "loading-realistic";
     this.clear();
   }
 
@@ -421,16 +432,18 @@ export class SigningAvatarRenderer {
     this.canvas.style.width = `${width}px`;
     this.canvas.style.height = `${height}px`;
     this.threeAvatar.resize(width, height);
+    this.realisticAvatar.resize(width, height);
     return { width, height };
   }
 
   setPose(pose) {
     this.pose = pose;
+    this.realisticAvatar.resetSmoothing();
   }
 
   setMode(mode = "avatar") {
     this.mode = mode === "skeleton" ? "skeleton" : "avatar";
-    this.canvas.dataset.avatarRenderer = this.mode === "avatar" ? "procedural-3d" : "classic";
+    this.canvas.dataset.avatarRenderer = this.mode === "avatar" ? "loading-realistic" : "classic";
     this.draw(this.lastTime);
   }
 
@@ -453,9 +466,27 @@ export class SigningAvatarRenderer {
     for (let personIndex = 0; personIndex < people.length; personIndex += 1) {
       const person = people[personIndex];
       if (this.mode === "avatar") {
-        this.threeAvatar.draw(person, this.pose.header.components, fitScale);
-        this.canvas.dataset.visibleHands = String(this.threeAvatar.visibleHandCount || 0);
-        this.context.drawImage(this.threeAvatar.canvas, 0, 0, this.canvas.width, this.canvas.height);
+        const realistic = this.realisticAvatar.draw(person, this.pose.header.components, this.lastTime);
+        const active = realistic ? this.realisticAvatar : this.threeAvatar;
+        if (!realistic) this.threeAvatar.draw(person, this.pose.header.components, fitScale);
+        this.canvas.dataset.avatarRenderer = realistic ? "realistic" : "procedural-3d";
+        this.canvas.dataset.avatarModel = this.realisticAvatar.canvas.dataset.avatarModel || "loading";
+        this.canvas.dataset.avatarBounds = this.realisticAvatar.canvas.dataset.avatarBounds || "";
+        this.canvas.dataset.drivenBones = this.realisticAvatar.canvas.dataset.drivenBones || "0";
+        this.canvas.dataset.boneSignature = this.realisticAvatar.canvas.dataset.boneSignature || "";
+        this.canvas.dataset.targetBoneSignature = this.realisticAvatar.canvas.dataset.targetBoneSignature || "";
+        this.canvas.dataset.poseTime = this.realisticAvatar.canvas.dataset.poseTime || "";
+        this.canvas.dataset.visibleHands = String(active.visibleHandCount || 0);
+        this.canvas.dataset.trackedHands = realistic
+          ? String(this.realisticAvatar.trackedHandCount || 0)
+          : String(this.threeAvatar.visibleHandCount || 0);
+        this.canvas.dataset.leftHandBones = realistic
+          ? String(this.realisticAvatar.handDriveCounts.Left || 0)
+          : "0";
+        this.canvas.dataset.rightHandBones = realistic
+          ? String(this.realisticAvatar.handDriveCounts.Right || 0)
+          : "0";
+        this.context.drawImage(active.canvas, 0, 0, this.canvas.width, this.canvas.height);
       } else {
         drawSkeleton(this.context, person, this.pose.header.components, fitScale);
       }

@@ -47,3 +47,37 @@ test("fits a complete animation envelope inside the avatar viewport", () => {
     }
   }
 });
+
+test("converts normalized hand depth to the fitted X/Y scale", () => {
+  const pose = {
+    header: {
+      width: 512,
+      height: 512,
+      depth: 1,
+      components: [
+        { name: "POSE_LANDMARKS" },
+        { name: "LEFT_HAND_LANDMARKS" },
+      ],
+    },
+    body: {
+      fps: 25,
+      frames: [{ people: [{
+        POSE_LANDMARKS: [
+          { X: 160, Y: 120, Z: 0.5, C: 1 },
+          { X: 350, Y: 430, Z: 0.5, C: 1 },
+        ],
+        LEFT_HAND_LANDMARKS: [
+          { X: 210, Y: 240, Z: 0.5, C: 1 },
+          { X: 230, Y: 220, Z: 0.6, C: 1 },
+        ],
+      }] }],
+    },
+  };
+
+  const fitted = fitPoseToViewport(pose, 270, 207);
+  const hand = fitted.body.frames[0].people[0].LEFT_HAND_LANDMARKS;
+  const expected = 0.1 * 512 * fitted.__youtubeSignFit.scale;
+  assert.ok(Math.abs(hand[0].Z) < 1e-9);
+  assert.ok(Math.abs(hand[1].Z - expected) < 1e-9);
+  assert.equal(pose.body.frames[0].people[0].LEFT_HAND_LANDMARKS[1].Z, 0.6);
+});

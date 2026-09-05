@@ -1,6 +1,6 @@
 {
   "name": "ytsign",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": true,
   "description": "Chrome extension that renders transcript-first Pakistan Sign Language and ASL translations over YouTube videos.",
   "repository": {
@@ -31,11 +31,14 @@
     "test": "node --test tests/*.test.mjs",
     "test:browser": "node scripts/browser-smoke.mjs",
     "test:extension": "node scripts/extension-smoke.mjs",
+    "test:navigation": "node scripts/navigation-smoke.mjs",
     "test:asr": "node scripts/asr-smoke.mjs",
     "test:asr-extension": "node scripts/asr-extension-smoke.mjs",
     "test:audio-fallback": "node scripts/audio-fallback-smoke.mjs",
+    "test:avatar-poses": "node scripts/avatar-pose-qa.mjs",
+    "demo:avatar": "node scripts/avatar-pose-qa.mjs --record-demo",
     "check": "npm run test && npm run build",
-    "verify": "npm run check && npm run test:browser && npm run test:extension && npm run test:asr-extension && npm run test:audio-fallback"
+    "verify": "npm run check && npm run test:navigation && npm run test:browser && npm run test:extension && npm run test:asr-extension && npm run test:audio-fallback"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",

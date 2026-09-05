@@ -2,9 +2,12 @@
 node_modules/
 .npm-cache/
 .cache/
+__pycache__/
+*.pyc
 
 # Generated extension and test output
 dist/
+releases/
 work/
 coverage/
 playwright-report/
@@ -24,6 +27,13 @@ src/assets/
 *.fbx
 *.glb
 *.zip
+
+# The one selected browser avatar is a release dependency, not an experiment.
+!src/assets/
+src/assets/*
+!src/assets/avatar/
+src/assets/avatar/*
+!src/assets/avatar/signing-avatar-v6q3.glb
 
 # Local configuration and secrets
 .env

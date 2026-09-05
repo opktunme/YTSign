@@ -62,6 +62,7 @@ async function posePixelStats(renderer) {
     const pixels = context?.getImageData(0, 0, canvas.width, canvas.height).data;
     let posePixels = 0;
     let edgePosePixels = 0;
+    let bottomCropPixels = 0;
     let minX = canvas.width;
     let maxX = -1;
     let minY = canvas.height;
@@ -81,7 +82,8 @@ async function posePixelStats(renderer) {
         maxX = Math.max(maxX, x);
         minY = Math.min(minY, y);
         maxY = Math.max(maxY, y);
-        if (x < 3 || y < 3 || x >= canvas.width - 3 || y >= canvas.height - 3) edgePosePixels += 1;
+        if (x < 3 || y < 3 || x >= canvas.width - 3) edgePosePixels += 1;
+        if (y >= canvas.height - 3) bottomCropPixels += 1;
       }
     }
     const rect = canvas.getBoundingClientRect();
@@ -92,6 +94,7 @@ async function posePixelStats(renderer) {
       clientHeight: rect.height,
       posePixels,
       edgePosePixels,
+      bottomCropPixels,
       bounds: posePixels ? { minX, maxX, minY, maxY } : null,
     };
   });
@@ -113,6 +116,8 @@ async function poseTimelineStats(renderer) {
       minPosePixels: Infinity,
       maxPosePixels: 0,
       edgeFrames: [],
+      bottomCropFrameCount: 0,
+      maximumBottomCropPixels: 0,
       bounds: { minX: canvas.width, maxX: -1, minY: canvas.height, maxY: -1 },
     };
     for (let frameIndex = 0; frameIndex < pose.body.frames.length; frameIndex += 1) {
@@ -121,6 +126,7 @@ async function poseTimelineStats(renderer) {
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
       let posePixels = 0;
       let edgePixels = 0;
+      let bottomCropPixels = 0;
       for (let index = 0; index < pixels.length; index += 4) {
         const foreground = Math.abs(pixels[index] - 7) +
           Math.abs(pixels[index + 1] - 19) +
@@ -134,12 +140,15 @@ async function poseTimelineStats(renderer) {
         stats.bounds.maxX = Math.max(stats.bounds.maxX, x);
         stats.bounds.minY = Math.min(stats.bounds.minY, y);
         stats.bounds.maxY = Math.max(stats.bounds.maxY, y);
-        if (x < 3 || y < 3 || x >= canvas.width - 3 || y >= canvas.height - 3) edgePixels += 1;
+        if (x < 3 || y < 3 || x >= canvas.width - 3) edgePixels += 1;
+        if (y >= canvas.height - 3) bottomCropPixels += 1;
       }
       if (posePixels) stats.framesWithAvatar += 1;
       stats.minPosePixels = Math.min(stats.minPosePixels, posePixels);
       stats.maxPosePixels = Math.max(stats.maxPosePixels, posePixels);
       if (edgePixels) stats.edgeFrames.push({ frameIndex, edgePixels });
+      if (bottomCropPixels) stats.bottomCropFrameCount += 1;
+      stats.maximumBottomCropPixels = Math.max(stats.maximumBottomCropPixels, bottomCropPixels);
     }
     signer.currentTime = 0;
     signer.dispatchEvent(new CustomEvent("render$"));
@@ -286,6 +295,10 @@ try {
     }
     return colored > 50;
   }, null, { timeout: 30_000 });
+  await renderer.waitForFunction(() => {
+    const canvas = document.getElementById("avatarCanvas");
+    return canvas?.dataset?.avatarRenderer === "realistic" && canvas?.dataset?.avatarModel === "ready";
+  }, null, { timeout: 120_000 });
   report.checks.pslDefaultEndToEnd = {
     caption: await viewer.locator("#caption").textContent(),
     source: await viewer.locator("#sourceBadge").textContent(),
@@ -295,8 +308,8 @@ try {
     timeline: await poseTimelineStats(renderer),
     renderer: await renderer.locator("#avatarCanvas").getAttribute("data-avatar-renderer"),
   };
-  if (report.checks.pslDefaultEndToEnd.renderer !== "procedural-3d") {
-    throw new Error(`Expected the procedural 3D renderer, received ${report.checks.pslDefaultEndToEnd.renderer || "no renderer"}`);
+  if (report.checks.pslDefaultEndToEnd.renderer !== "realistic") {
+    throw new Error(`Expected the realistic GLB renderer, received ${report.checks.pslDefaultEndToEnd.renderer || "no renderer"}`);
   }
   if (!report.checks.pslDefaultEndToEnd.naturalMotion ||
       report.checks.pslDefaultEndToEnd.naturalMotion.timeAdvance < 0.5 ||
